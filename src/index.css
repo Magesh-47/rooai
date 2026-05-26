@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-body:    "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:    "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+
+  /* Backgrounds — warm cream scale */
+  --bg:  #F9F7F4;
+  --bg2: #F3F0EB;
+  --bg3: #FFFFFF;
+  --bg4: #EDEAE3;
+  --bg5: #E4E0D8;
+
+  /* Borders */
+  --border:  rgba(0,0,0,0.07);
+  --border2: rgba(0,0,0,0.13);
+  --border3: rgba(0,0,0,0.22);
+
+  /* Text */
+  --ink:  #0A1628;
+  --ink2: #4A5568;
+  --ink3: #94A3B8;
+
+  /* Sage / green */
+  --sage:  #276749;
+  --sage2: #2F855A;
+  --sage3: #C6F6D5;
+
+  /* Clay / orange */
+  --clay:  #7C4A2D;
+  --clay2: #C05621;
+  --clay3: #FEEBC8;
+
+  /* Slate */
+  --slate:  #4A5568;
+  --slate2: #718096;
+  --slate3: #E2E8F0;
+
+  /* Gold / amber */
+  --gold:  #7B6000;
+  --gold2: #975A16;
+  --gold3: #FEFCBF;
+
+  /* Rose */
+  --rose:  #822358;
+  --rose2: #97266D;
+  --rose3: #FED7E2;
+
+  /* Violet */
+  --violet:  #44337A;
+  --violet2: #6B46C1;
+  --violet3: #E9D8FD;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+
+  --radius: 8px;
+  --radius2: 10px;
+  --radius3: 14px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+#root {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+::selection { background: rgba(10,22,40,0.12); }
+
+/* ── Waveform ── */
+@keyframes wv {
+  0%, 100% { transform: scaleY(0.18); }
+  50% { transform: scaleY(1); }
+}
+.wv-bar {
+  display: block;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--ink);
+  opacity: 0.25;
+  animation: wv 1.3s ease-in-out infinite;
+  transform-origin: center;
+}
+.wv-bar-active {
+  opacity: 0.5;
+  background: var(--sage2);
+}
+
+/* ── Breathe (brand dot) ── */
+@keyframes breathe {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.82); }
+}
+.breathe { animation: breathe 3s ease-in-out infinite; }
+
+/* ── Pulse (rec dot) ── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.78); }
+}
+.pulse-dot { animation: pulse-dot 1.2s ease infinite; }
+
+/* ── Spinner ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  width: 10px; height: 10px;
+  border: 1.5px solid rgba(107,70,193,0.25);
+  border-top-color: var(--violet2);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  display: inline-block;
+}
+
+/* ── Fade up ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.28s ease both; }
+
+/* ── Slide in ── */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-in { animation: slide-in 0.3s ease-out forwards; }
+
+/* ── Progress shimmer ── */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+.progress-shimmer {
+  background: linear-gradient(90deg, var(--sage) 0%, var(--sage2) 45%, var(--sage) 100%);
+  background-size: 200% auto;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* ── Tag variants — light tint on white/cream ── */
+.t-sage   { background: #EEFBF3; color: #276749; }
+.t-clay   { background: #FEF4EB; color: #C05621; }
+.t-gold   { background: #FFFBEB; color: #975A16; }
+.t-violet { background: #F2EFFE; color: #6B46C1; }
+.t-rose   { background: #FEF0F6; color: #97266D; }
+.t-slate  { background: #F1F4F8; color: #718096; }
+.t-red    { background: #FEF0F0; color: #C53030; }
+
+/* ── Tag base ── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-body);
+  letter-spacing: -0.01em;
+}
+
+/* ── Inputs & selects ── */
+select, input, button {
+  font-family: var(--font-body);
+  letter-spacing: -0.01em;
+}
+
+/* ── Focus ring ── */
+*:focus-visible {
+  outline: 2px solid rgba(10,22,40,0.35);
+  outline-offset: 2px;
+}
