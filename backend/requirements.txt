@@ -1,3 +1,17 @@
+# Web framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# Auth & database
+supabase>=2.0.0
+gotrue>=2.0.0
+python-dotenv>=1.0.0
+pydantic[email]>=2.0.0
+
+# HTTP client (Teams OAuth token exchange, Graph API)
+httpx>=0.27.0
+
+# ML / Transcription (separate feature — requires GPU-capable host)
 pyannote.audio>=3.1.0
 faster-whisper>=1.0.0
 torch>=2.0.0

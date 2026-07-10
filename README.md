@@ -2,9 +2,19 @@
 
 Meeting reconciliation engine — React + TypeScript frontend, FastAPI backend.
 
+## Project Structure
+
+```
+rooai/
+├── frontend/   # React + TypeScript + Vite
+├── backend/    # FastAPI (Python)
+└── supabase/   # Edge functions
+```
+
 ## Frontend
 
 ```bash
+cd frontend
 npm install
 npm run dev
 ```

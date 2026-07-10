@@ -152,3 +152,24 @@ CREATE TRIGGER meetings_updated_at    BEFORE UPDATE ON meetings    FOR EACH ROW 
 CREATE TRIGGER notes_updated_at       BEFORE UPDATE ON meeting_notes FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER logs_updated_at        BEFORE UPDATE ON log_entries  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER profiles_updated_at    BEFORE UPDATE ON profiles     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ── Integrations ──────────────────────────────────────────
+-- One row per integration type ('teams', 'mcp').
+-- config stores OAuth tokens / connection config (service-role access only).
+CREATE TABLE IF NOT EXISTS integrations (
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  type         TEXT        NOT NULL UNIQUE CHECK (type IN ('teams', 'mcp')),
+  config       JSONB       NOT NULL DEFAULT '{}',
+  is_active    BOOLEAN     NOT NULL DEFAULT FALSE,
+  connected_at TIMESTAMPTZ,
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE integrations ENABLE ROW LEVEL SECURITY;
+-- Only admins can read/write integration records
+CREATE POLICY "integrations_admin_only" ON integrations FOR ALL
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
+
+CREATE TRIGGER integrations_updated_at
+  BEFORE UPDATE ON integrations
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();

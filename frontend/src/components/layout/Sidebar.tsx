@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, Search, Share2, History, LogOut, Users, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { LayoutGrid, Search, History, LogOut, Users, PanelLeftClose, PanelLeft, Plug } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import rooLogo from '../../assets/roo-logo.png'
 
@@ -7,7 +7,6 @@ const nav = [
   { to: '/meetings', Icon: LayoutGrid, label: 'Meetings', exact: true },
   { to: '/history',  Icon: History,    label: 'History'              },
   { to: '/query',    Icon: Search,     label: 'Query'                },
-  { to: '/export',   Icon: Share2,     label: 'Export'               },
 ]
 
 function NavItem({ to, Icon, label, exact, collapsed }: {
@@ -145,7 +144,10 @@ export function Sidebar({ collapsed, onToggle }: { collapsed?: boolean; onToggle
           <NavItem key={item.to} to={item.to} Icon={item.Icon} label={item.label} exact={item.exact} collapsed={collapsed} />
         ))}
         {profile?.role === 'admin' && (
-          <NavItem to="/admin/users" Icon={Users} label="Users" collapsed={collapsed} />
+          <NavItem to="/admin/users"        Icon={Users} label="Users"        collapsed={collapsed} />
+        )}
+        {profile?.role === 'admin' && (
+          <NavItem to="/admin/integrations" Icon={Plug}  label="Integrations" collapsed={collapsed} />
         )}
       </div>
 

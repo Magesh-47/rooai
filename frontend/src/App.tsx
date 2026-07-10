@@ -10,10 +10,10 @@ import { MeetingDetail } from './pages/MeetingDetail'
 import { Record }      from './pages/Record'
 import { Upload }      from './pages/Upload'
 import { Query }       from './pages/Query'
-import { Export }      from './pages/Export'
 import { Settings }    from './pages/Settings'
 
-import { Users }       from './pages/admin/Users'
+import { Users }        from './pages/admin/Users'
+import { Integrations } from './pages/admin/Integrations'
 
 // ── Auth guards ───────────────────────────────────────────
 
@@ -65,11 +65,11 @@ function AppRoutes() {
         <Route path="/record"        element={<Record />} />
         <Route path="/upload"        element={<Upload />} />
         <Route path="/query"         element={<Query />} />
-        <Route path="/export"        element={<Export />} />
         <Route path="/settings"      element={<Settings />} />
 
         {/* Admin-only */}
-        <Route path="/admin/users" element={<RequireAdmin><Users /></RequireAdmin>} />
+        <Route path="/admin/users"         element={<RequireAdmin><Users /></RequireAdmin>} />
+        <Route path="/admin/integrations"  element={<RequireAdmin><Integrations /></RequireAdmin>} />
       </Route>
 
       {/* Fallback */}

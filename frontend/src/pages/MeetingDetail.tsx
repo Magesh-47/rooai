@@ -3,10 +3,9 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Clock, Users, AlertTriangle, Play, Pause,
   SkipBack, SkipForward, Download, ChevronDown,
-  CheckCircle2, ShieldAlert, Cpu, Heart, Share2,
+  CheckCircle2, ShieldAlert, Cpu, Heart,
 } from 'lucide-react'
-import { meetings } from '../data/mock'
-import type { LogEntry, TranscriptSegment } from '../types'
+import { getMeeting, type DBMeeting, type DBSegment, type DBLog } from '../lib/meetings'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
@@ -33,10 +32,10 @@ const logIcon: Record<string, React.ReactNode> = {
   culture:      <Heart size={12} strokeWidth={2} style={{ color: 'var(--rose2)' }} />,
 }
 
-const statusMeta: Record<string, { label: string; bg: string; color: string }> = {
-  open:        { label: 'Open',        bg: '#FEF0F0', color: '#C53030' },
-  'in-progress':{ label: 'In Progress', bg: '#FFFBEB', color: '#975A16' },
-  resolved:    { label: 'Resolved',    bg: '#EEFBF3', color: '#276749' },
+const logStatusMeta: Record<string, { label: string; bg: string; color: string }> = {
+  open:          { label: 'Open',        bg: '#FEF0F0', color: '#C53030' },
+  'in-progress': { label: 'In Progress', bg: '#FFFBEB', color: '#975A16' },
+  resolved:      { label: 'Resolved',    bg: '#EEFBF3', color: '#276749' },
 }
 
 const meetingStatusMeta: Record<string, { label: string; bg: string; color: string }> = {
@@ -119,7 +118,6 @@ function AudioPlayer({ duration }: { duration: number }) {
         {formatTimestamp(currentSecs)}
       </span>
 
-      {/* Waveform scrubber */}
       <div
         style={{ flex: 1, height: 28, display: 'flex', alignItems: 'center', gap: '1px', cursor: 'pointer' }}
         onClick={e => {
@@ -152,18 +150,16 @@ function AudioPlayer({ duration }: { duration: number }) {
   )
 }
 
-function TranscriptItem({ seg }: { seg: TranscriptSegment }) {
+function TranscriptItem({ seg }: { seg: DBSegment }) {
+  const name = seg.speaker_name ?? seg.speaker_label
   return (
     <div style={{ display: 'flex', gap: 12, paddingBottom: 18, borderBottom: '1px solid var(--border)' }}>
-      <Avatar name={seg.speaker.name} size={28} />
+      <Avatar name={name} size={28} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{seg.speaker.name}</span>
-          {seg.speaker.role && (
-            <span style={{ fontSize: 11, color: 'var(--ink3)' }}>{seg.speaker.role}</span>
-          )}
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{name}</span>
           <span style={{ marginLeft: 'auto', fontSize: 10.5, fontFamily: 'var(--font-mono)', color: 'var(--ink3)' }}>
-            {formatTimestamp(seg.timestamp)}
+            {formatTimestamp(seg.timestamp_seconds)}
           </span>
         </div>
         <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--ink2)' }}>{seg.text}</p>
@@ -172,8 +168,8 @@ function TranscriptItem({ seg }: { seg: TranscriptSegment }) {
   )
 }
 
-function LogCard({ log }: { log: LogEntry }) {
-  const sm = statusMeta[log.status] ?? statusMeta.open
+function LogCard({ log }: { log: DBLog }) {
+  const sm = logStatusMeta[log.status] ?? logStatusMeta.open
   return (
     <div style={{
       borderRadius: 10, padding: 14,
@@ -182,17 +178,11 @@ function LogCard({ log }: { log: LogEntry }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {logIcon[log.type]}
-          <span style={{
-            fontSize: 10, fontWeight: 500, textTransform: 'capitalize',
-            color: 'var(--ink2)',
-          }}>
+          <span style={{ fontSize: 10, fontWeight: 500, textTransform: 'capitalize', color: 'var(--ink2)' }}>
             {log.type}
           </span>
         </div>
-        <span style={{
-          fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 4,
-          background: sm.bg, color: sm.color,
-        }}>
+        <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 4, background: sm.bg, color: sm.color }}>
           {sm.label}
         </span>
       </div>
@@ -200,7 +190,7 @@ function LogCard({ log }: { log: LogEntry }) {
         {log.title}
       </p>
       <p style={{ fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6 }}>{log.body}</p>
-      {(log.owner || log.dueDate) && (
+      {(log.owner || log.due_date) && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 12, marginTop: 10,
           paddingTop: 10, borderTop: '1px solid var(--border)',
@@ -211,9 +201,9 @@ function LogCard({ log }: { log: LogEntry }) {
               {log.owner}
             </span>
           )}
-          {log.dueDate && (
+          {log.due_date && (
             <span style={{ fontSize: 11, color: 'var(--ink3)' }}>
-              Due {new Date(log.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              Due {new Date(log.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
           )}
         </div>
@@ -223,11 +213,39 @@ function LogCard({ log }: { log: LogEntry }) {
 }
 
 export function MeetingDetail() {
-  const { id } = useParams()
+  const { id } = useParams<{ id: string }>()
+  const [meeting,  setMeeting]  = useState<DBMeeting | null>(null)
+  const [segments, setSegments] = useState<DBSegment[]>([])
+  const [logs,     setLogs]     = useState<DBLog[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
-  const meeting = meetings.find(m => m.id === id)
 
-  if (!meeting) {
+  useEffect(() => {
+    if (!id) return
+    getMeeting(id)
+      .then(({ meeting, segments, logs }) => {
+        setMeeting(meeting)
+        setSegments(segments)
+        setLogs(logs)
+      })
+      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  if (loading) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          border: '2px solid var(--border2)', borderTopColor: 'var(--ink3)',
+          animation: 'spin 0.75s linear infinite',
+        }} />
+      </div>
+    )
+  }
+
+  if (error || !meeting) {
     return (
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
@@ -235,7 +253,7 @@ export function MeetingDetail() {
         background: 'var(--bg)',
       }}>
         <AlertTriangle size={28} strokeWidth={1.4} style={{ color: 'var(--ink3)' }} />
-        <p style={{ fontSize: 13.5, color: 'var(--ink2)' }}>Meeting not found.</p>
+        <p style={{ fontSize: 13.5, color: 'var(--ink2)' }}>{error ?? 'Meeting not found.'}</p>
         <Link to="/" style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500, textDecoration: 'none' }}>
           ← Back to meetings
         </Link>
@@ -243,11 +261,11 @@ export function MeetingDetail() {
     )
   }
 
-  const logsByType = meeting.logs.reduce((acc, l) => {
+  const logsByType = logs.reduce((acc, l) => {
     if (!acc[l.type]) acc[l.type] = []
     acc[l.type].push(l)
     return acc
-  }, {} as Record<string, LogEntry[]>)
+  }, {} as Record<string, DBLog[]>)
 
   const ms = meetingStatusMeta[meeting.status] ?? meetingStatusMeta.ready
 
@@ -263,20 +281,14 @@ export function MeetingDetail() {
       }}>
         <Link
           to="/"
-          style={{
-            padding: 6, borderRadius: 7, display: 'flex',
-            color: 'var(--ink2)', textDecoration: 'none', transition: 'all 0.1s',
-          }}
+          style={{ padding: 6, borderRadius: 7, display: 'flex', color: 'var(--ink2)', textDecoration: 'none', transition: 'all 0.1s' }}
           onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'var(--bg4)')}
           onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
         >
           <ArrowLeft size={15} strokeWidth={1.8} />
         </Link>
 
-        <span style={{
-          fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 4,
-          background: ms.bg, color: ms.color, flexShrink: 0,
-        }}>
+        <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 4, background: ms.bg, color: ms.color, flexShrink: 0 }}>
           {ms.label}
         </span>
 
@@ -292,17 +304,10 @@ export function MeetingDetail() {
           {formatDate(meeting.date)} · {formatDuration(meeting.duration)}
         </span>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          {meeting.participants.map((p, i) => (
-            <div key={p.id} style={{ marginLeft: i === 0 ? 0 : -8 }}>
-              <Avatar name={p.name} size={24} />
-            </div>
-          ))}
-          <span style={{ fontSize: 11.5, color: 'var(--ink3)', marginLeft: 4 }}>
-            <Users size={11} strokeWidth={1.8} style={{ display: 'inline', marginRight: 3 }} />
-            {meeting.participants.length}
-          </span>
-        </div>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: 'var(--ink3)', flexShrink: 0 }}>
+          <Users size={11} strokeWidth={1.8} />
+          {meeting.participant_count} speaker{meeting.participant_count !== 1 ? 's' : ''}
+        </span>
 
         {/* Export dropdown */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -325,12 +330,12 @@ export function MeetingDetail() {
           </button>
           {exportOpen && (
             <div style={{
-              position: 'absolute', right: 0, top: 40, width: 168,
+              position: 'absolute', right: 0, top: 40, width: 148,
               borderRadius: 10, zIndex: 20,
               background: 'var(--bg3)', border: '1px solid var(--border)',
               boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
             }}>
-              {['Markdown', 'PDF', 'Notion', 'JSON', 'Excel'].map(fmt => (
+              {['Markdown', 'JSON'].map(fmt => (
                 <button
                   key={fmt}
                   onClick={() => setExportOpen(false)}
@@ -348,23 +353,6 @@ export function MeetingDetail() {
                   {fmt}
                 </button>
               ))}
-              <div style={{ borderTop: '1px solid var(--border)' }}>
-                <button
-                  onClick={() => setExportOpen(false)}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: 9,
-                    padding: '9px 14px', textAlign: 'left',
-                    fontSize: 12.5, color: 'var(--ink)', background: 'transparent',
-                    border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg2)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <Share2 size={11} strokeWidth={1.8} style={{ color: 'var(--ink3)' }} />
-                  Share link
-                </button>
-              </div>
             </div>
           )}
         </div>
@@ -377,10 +365,7 @@ export function MeetingDetail() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Left: summary + transcript */}
-        <div style={{
-          flex: 1, overflowY: 'auto',
-          borderRight: '1px solid var(--border)',
-        }}>
+        <div style={{ flex: 1, overflowY: 'auto', borderRight: '1px solid var(--border)' }}>
           {meeting.summary && (
             <div style={{
               margin: '20px 20px 4px',
@@ -405,11 +390,11 @@ export function MeetingDetail() {
               fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
               letterSpacing: '0.07em', color: 'var(--ink3)', marginBottom: 16,
             }}>
-              Transcript · {meeting.transcript.length} segments
+              Transcript · {segments.length} segments
             </p>
-            {meeting.transcript.length > 0 ? (
+            {segments.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                {meeting.transcript.map(seg => <TranscriptItem key={seg.id} seg={seg} />)}
+                {segments.map(seg => <TranscriptItem key={seg.id} seg={seg} />)}
               </div>
             ) : (
               <div style={{
@@ -425,21 +410,18 @@ export function MeetingDetail() {
         </div>
 
         {/* Right: logs panel */}
-        <div style={{
-          width: 320, flexShrink: 0, overflowY: 'auto',
-          background: 'var(--bg2)',
-        }}>
+        <div style={{ width: 320, flexShrink: 0, overflowY: 'auto', background: 'var(--bg2)' }}>
           <div style={{ padding: '16px 16px 24px' }}>
             <p style={{
               fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
               letterSpacing: '0.07em', color: 'var(--ink3)', marginBottom: 14,
             }}>
-              Reconciled logs · {meeting.logs.length}
+              Reconciled logs · {logs.length}
             </p>
 
             {Object.entries(logsByType).length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {Object.entries(logsByType).map(([type, logs]) => (
+                {Object.entries(logsByType).map(([type, typeLogs]) => (
                   <div key={type}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                       <p style={{
@@ -452,11 +434,11 @@ export function MeetingDetail() {
                         fontSize: 9.5, fontWeight: 500, padding: '1px 5px', borderRadius: 3,
                         background: 'var(--bg4)', color: 'var(--ink3)',
                       }}>
-                        {logs.length}
+                        {typeLogs.length}
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {logs.map(log => <LogCard key={log.id} log={log} />)}
+                      {typeLogs.map(log => <LogCard key={log.id} log={log} />)}
                     </div>
                   </div>
                 ))}
